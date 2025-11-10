@@ -1,0 +1,102 @@
+<div class="form-group">
+  <div class="form-group nowrap">
+    <label for="baseUrl" class="form-label">Home Assistant Base URL</label>
+    <input type="text" id="baseUrl" name="baseUrl" placeholder="http://homeassistant.local:8123" class="form-input">
+  </div>
+  <div class="form-group nowrap">
+    <label for="title" class="form-label">Title</label>
+    <input type="text" id="title" name="title" placeholder="Home Assistant" class="form-input">
+  </div>
+  <div class="form-group nowrap">
+    <label for="timeFormat" class="form-label">Time Format</label>
+    <input type="text" id="timeFormat" name="timeFormat" placeholder="%Y-%m-%d %H:%M" class="form-input">
+  </div>
+</div>
+
+<div class="form-group">
+  <label class="form-label">Display</label>
+  <div class="form-group">
+    <input type="checkbox" id="displayRefreshTime" name="displayRefreshTime" onclick="this.value=this.checked ? 'true' : 'false';">
+    <span>Refresh Time</span>
+  </div>
+</div>
+
+<div class="form-group">
+  <div class="form-group nowrap" style="align-items: start;">
+    <div style="flex: 1; margin-right: 1rem;">
+      <label class="form-label">Entity IDs</label>
+      <div id="entitiesContainer" class="form-group"></div>
+      <button type="button" id="addEntity" class="header-button">+ Add Entity</button>
+    </div>
+    <div style="flex: 1;">
+      <label class="form-label">Attributes (optional)</label>
+      <div id="attributesContainer" class="form-group"></div>
+      <button type="button" id="addAttribute" class="header-button">+ Add Attribute</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  const entitiesContainer = document.getElementById('entitiesContainer');
+  const attributesContainer = document.getElementById('attributesContainer');
+  const addEntityBtn = document.getElementById('addEntity');
+  const addAttributeBtn = document.getElementById('addAttribute');
+
+  function addEntityRow(value = '') {
+    const row = document.createElement('div');
+    row.className = 'form-group nowrap';
+    row.innerHTML = `
+      <input type="text" name="entityId[]" placeholder="sensor.outdoor_temperature" value="${value}" class="form-input">
+      <button type="button" class="delete-button" title="Remove">
+        <img src="{{ url_for('static', filename='icons/remove.png') }}" alt="remove" class="action-icon">
+      </button>
+    `;
+    row.querySelector('.delete-button').onclick = () => row.remove();
+    entitiesContainer.appendChild(row);
+  }
+
+  function addAttributeRow(value = '') {
+    const row = document.createElement('div');
+    row.className = 'form-group nowrap';
+    row.innerHTML = `
+      <input type="text" name="attribute[]" placeholder="battery_level" value="${value}" class="form-input">
+      <button type="button" class="delete-button" title="Remove">
+        <img src="{{ url_for('static', filename='icons/remove.png') }}" alt="remove" class="action-icon">
+      </button>
+    `;
+    row.querySelector('.delete-button').onclick = () => row.remove();
+    attributesContainer.appendChild(row);
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    // Load existing settings if present
+    if (typeof loadPluginSettings !== 'undefined' && loadPluginSettings) {
+      document.getElementById('baseUrl').value = pluginSettings.baseUrl || '';
+      document.getElementById('title').value = pluginSettings.title || '';
+      document.getElementById('timeFormat').value = pluginSettings.timeFormat || '%Y-%m-%d %H:%M';
+
+      const showRefresh = pluginSettings.displayRefreshTime === 'true';
+      document.getElementById('displayRefreshTime').checked = showRefresh;
+      document.getElementById('displayRefreshTime').value = showRefresh ? 'true' : 'false';
+
+      const entities = pluginSettings['entityId[]'] || pluginSettings.entityId || [];
+      if (typeof entities === 'string') {
+        addEntityRow(entities);
+      } else if (Array.isArray(entities) && entities.length > 0) {
+        entities.forEach(e => addEntityRow(e));
+      }
+
+      const attributes = pluginSettings['attribute[]'] || [];
+      if (typeof attributes === 'string') {
+        addAttributeRow(attributes);
+      } else if (Array.isArray(attributes) && attributes.length > 0) {
+        attributes.forEach(a => addAttributeRow(a));
+      }
+    }
+
+    if (!entitiesContainer.children.length) addEntityRow();
+
+    addEntityBtn.onclick = () => addEntityRow();
+    addAttributeBtn.onclick = () => addAttributeRow();
+  });
+</script>
