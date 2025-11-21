@@ -15,9 +15,9 @@ class InkyDisplay(AbstractDisplay):
 
     The Inky display driver supports auto configuration.
     """
-   
+
     def initialize_display(self):
-        
+
         """
         Initializes the Inky display device.
 
@@ -26,7 +26,7 @@ class InkyDisplay(AbstractDisplay):
         Raises:
             ValueError: If the resolution cannot be retrieved or stored.
         """
-        
+
         self.inky_display = auto()
         self.inky_display.set_border(self.inky_display.BLACK)
 
@@ -34,15 +34,15 @@ class InkyDisplay(AbstractDisplay):
         if not self.device_config.get_config("resolution"):
             self.device_config.update_value(
                 "resolution",
-                [int(self.inky_display.width), int(self.inky_display.height)], 
+                [int(self.inky_display.width), int(self.inky_display.height)],
                 write=True)
 
-    def display_image(self, image, image_settings=[]):
-        
+    def display_image(self, image, image_settings=[], device_display_settings={}):
+
         """
         Displays the provided image on the Inky display.
 
-        The image has been processed by adjusting orientation and resizing 
+        The image has been processed by adjusting orientation and resizing
         before being sent to the display.
 
         Args:
@@ -53,10 +53,11 @@ class InkyDisplay(AbstractDisplay):
             ValueError: If no image is provided.
         """
 
-        logger.info("Displaying image to Inky display.")
+        inky_display_saturation = device_display_settings.get("inky_display_saturation", 0.5)
+        logger.info(f"Displaying image to Inky display. saturation: {device_display_settings} {inky_display_saturation}")
         if not image:
             raise ValueError(f"No image provided.")
 
         # Display the image on the Inky display
-        self.inky_display.set_image(image)
+        self.inky_display.set_image(image, saturation=inky_display_saturation)
         self.inky_display.show()

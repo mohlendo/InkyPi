@@ -8,6 +8,10 @@ logger = logging.getLogger(__name__)
 DEFAULT_TIMEOUT = 10
 
 class HomeAssistant(BasePlugin):
+
+    def get_device_display_settings(self):
+        return {'inky_display_saturation': 0.0}
+
     def generate_settings_template(self):
         template_params = super().generate_settings_template()
         # Advertise required API key

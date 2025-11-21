@@ -14,37 +14,37 @@ class WaveshareDisplay(AbstractDisplay):
     """
     Handles Waveshare e-paper display dynamically based on device type.
 
-    This class loads the appropriate display driver dynamically based on the 
-    `display_type` specified in the device configuration, allowing support for 
-    multiple Waveshare EPD models.  
+    This class loads the appropriate display driver dynamically based on the
+    `display_type` specified in the device configuration, allowing support for
+    multiple Waveshare EPD models.
 
     The module drivers are in display.waveshare_epd.
     """
 
     def initialize_display(self):
-        
+
         """
         Initializes the Waveshare display device.
 
-        Retrieves the display type from the device configuration and dynamically 
+        Retrieves the display type from the device configuration and dynamically
         loads the corresponding Waveshare EPD driver from display.waveshare_epd.
 
         Raises:
-            ValueError: If `display_type` is missing or the specified module is 
+            ValueError: If `display_type` is missing or the specified module is
                         not found.
         """
-        
+
         logger.info("Initializing Waveshare display")
 
         # get the device type which should be the model number of the device.
-        display_type = self.device_config.get_config("display_type")  
+        display_type = self.device_config.get_config("display_type")
         logger.info(f"Loading EPD display for {display_type} display")
 
         if not display_type:
             raise ValueError("Waveshare driver but 'display_type' not specified in configuration.")
 
         # Construct module path dynamically - e.g. "display.waveshare_epd.epd7in3e"
-        module_name = f"display.waveshare_epd.{display_type}" 
+        module_name = f"display.waveshare_epd.{display_type}"
 
         # Workaround for some Waveshare drivers using 'import epdconfig' causing import errors
         epd_dir = Path(__file__).parent / "waveshare_epd"
@@ -53,7 +53,7 @@ class WaveshareDisplay(AbstractDisplay):
 
         try:
             # Dynamically load module
-            epd_module = importlib.import_module(module_name)  
+            epd_module = importlib.import_module(module_name)
             self.epd_display = epd_module.EPD()
             # Workaround for init functions with inconsistent casing
             self.epd_display_init = getattr(self.epd_display, "Init", getattr(self.epd_display, "init", None))
@@ -82,8 +82,8 @@ class WaveshareDisplay(AbstractDisplay):
                 write=True)
 
 
-    def display_image(self, image, image_settings=[]):
-        
+    def display_image(self, image, image_settings=[], device_display_settings={}):
+
         """
         Displays an image on the Waveshare display.
 

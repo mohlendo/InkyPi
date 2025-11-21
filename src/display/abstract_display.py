@@ -3,7 +3,7 @@ class AbstractDisplay:
     Abstract base class for all display devices.
 
     This class defines methods taht subclasses are required to implement for
-    initialization and to display images on a screen.  
+    initialization and to display images on a screen.
 
     These implementations will be device specific.
     """
@@ -30,7 +30,7 @@ class AbstractDisplay:
         """
         raise NotImplementedError("Method 'initialize_display(...) must be provided in a subclass.")
 
-    def display_image(self, image, image_settings=[]):
+    def display_image(self, image, image_settings=[], device_display_settings={}):
         """
         Abstract method to display an image on the screen.  Implementations of this
         method should handle the device specific operations.
@@ -38,6 +38,7 @@ class AbstractDisplay:
         Args:
             image (PIL.Image): The image to be displayed.
             image_settings (list, optional): List of settings to modify how the image is displayed.
+            :param device_display_settings:
 
         Raises:
             NotImplementedError: If not implemented in a subclass.

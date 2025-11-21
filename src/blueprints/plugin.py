@@ -46,27 +46,27 @@ def plugin_page(plugin_id):
 def image(plugin_id, filename):
     # Resolve plugins directory dynamically
     plugins_dir = resolve_path("plugins")
-    
+
     # Construct the full path to the plugin's file
     plugin_dir = os.path.join(plugins_dir, plugin_id)
-    
+
     # Security check to prevent directory traversal
     safe_path = os.path.abspath(os.path.join(plugin_dir, filename))
     if not safe_path.startswith(os.path.abspath(plugin_dir)):
         return "Invalid path", 403
-    
+
     # Convert to absolute path for send_from_directory
     abs_plugin_dir = os.path.abspath(plugin_dir)
-    
+
     # Check if the directory and file exist
     if not os.path.isdir(abs_plugin_dir):
         logger.error(f"Plugin directory not found: {abs_plugin_dir}")
         return "Plugin directory not found", 404
-        
+
     if not os.path.isfile(safe_path):
         logger.error(f"File not found: {safe_path}")
         return "File not found", 404
-    
+
     # Serve the file from the plugin directory
     return send_from_directory(abs_plugin_dir, filename)
 
@@ -168,11 +168,11 @@ def update_now():
             plugin_config = device_config.get_plugin(plugin_id)
             if not plugin_config:
                 return jsonify({"error": f"Plugin '{plugin_id}' not found"}), 404
-                
+
             plugin = get_plugin_instance(plugin_config)
             image = plugin.generate_image(plugin_settings, device_config)
-            display_manager.display_image(image, image_settings=plugin_config.get("image_settings", []))
-            
+            display_manager.display_image(image, image_settings=plugin_config.get("image_settings", []), device_display_settings=plugin.get_device_display_settings())
+
     except Exception as e:
         logger.exception(f"Error in update_now: {str(e)}")
         return jsonify({"error": f"An error occurred: {str(e)}"}), 500

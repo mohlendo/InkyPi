@@ -65,7 +65,7 @@ class BasePlugin:
         settings_path = self.get_plugin_dir("settings.html")
         if Path(settings_path).is_file():
             template_params["settings_template"] = f"{self.get_plugin_id()}/settings.html"
-        
+
         template_params['frame_styles'] = FRAME_STYLES
         return template_params
 
@@ -87,3 +87,6 @@ class BasePlugin:
         rendered_html = template.render(template_params)
 
         return take_screenshot_html(rendered_html, dimensions)
+
+    def get_device_display_settings(self):
+        return {}
