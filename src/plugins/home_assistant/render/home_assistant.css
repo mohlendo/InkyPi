@@ -4,14 +4,15 @@
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
-/* Only the pure colors of the Spectra 6 panel, so they map 1:1 to the display without dithering */
+/* Only pure Spectra 6 palette colors, so they map 1:1 to the panel without dithering.
+   On the panel itself blue and red are dark and the paper white is grey (see inky's SATURATED_PALETTE),
+   so color is only used for fills and markers. Text is black on white/yellow or yellow on black. */
 :root {
   --black: #000000;
   --white: #ffffff;
   --yellow: #ffff00;
   --red: #ff0000;
   --blue: #0000ff;
-  --green: #00ff00;
 }
 
 .ha {
@@ -30,10 +31,10 @@
   justify-content: space-between;
   align-items: baseline;
   padding-bottom: 3px;
-  border-bottom: 3px solid var(--black);
+  border-bottom: 4px solid var(--black);
 }
 .ha-title { font-weight: bold; font-size: 28px; line-height: 1; text-transform: uppercase; letter-spacing: 0.06em; }
-.ha-meta { display: flex; gap: 18px; font-size: 15px; }
+.ha-meta { display: flex; gap: 18px; font-size: 16px; font-weight: bold; }
 
 /* One band per floor */
 .ha-groups { flex: 1; display: flex; flex-direction: column; min-height: 0; }
@@ -43,22 +44,21 @@
   flex-direction: column;
   min-height: 0;
   padding-top: 5px;
-  border-bottom: 1px solid var(--black);
+  border-bottom: 2px solid var(--black);
 }
 .ha-group:last-child { border-bottom: none; }
 
-/* Floor name as label-maker tape */
+/* Floor name on yellow label-maker tape */
 .ha-tape {
   align-self: flex-start;
-  padding: 1px 9px;
+  padding: 2px 10px;
   font-weight: bold;
-  font-size: 14px;
+  font-size: 15px;
   letter-spacing: 0.14em;
   text-transform: uppercase;
+  background: var(--yellow);
+  color: var(--black);
 }
-.tape-0 { background: var(--blue); color: var(--white); }
-.tape-1 { background: var(--green); color: var(--black); }
-.tape-2 { background: var(--black); color: var(--white); }
 
 /* Rooms of a floor side by side */
 .ha-tiles { flex: 1; display: flex; min-height: 0; }
@@ -70,7 +70,7 @@
   justify-content: center;
   gap: 2px;
   padding: 0 10px;
-  border-left: 1px solid var(--black);
+  border-left: 2px solid var(--black);
   container-type: size;
 }
 .ha-tile:first-child { padding-left: 0; border-left: none; }
@@ -78,28 +78,33 @@
 .ha-tile-head { display: flex; align-items: center; gap: 6px; min-width: 0; }
 .ha-tile-title {
   font-weight: bold;
-  font-size: clamp(11px, 20cqh, 17px);
+  font-size: clamp(13px, 22cqh, 18px);
   line-height: 1.35; /* room for umlaut dots, the title clips overflow for the ellipsis */
   text-transform: uppercase;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
+
+/* Warnings (OFFLINE, FEUCHT, BATTERIE): black label, yellow text */
 .ha-tag {
   flex-shrink: 0;
-  padding: 0 4px;
+  padding: 1px 6px;
   font-weight: bold;
-  font-size: clamp(10px, 15cqh, 14px);
+  font-size: clamp(11px, 16cqh, 15px);
   letter-spacing: 0.06em;
+  background: var(--black);
+  color: var(--yellow);
 }
-.tag-yellow { background: var(--yellow); color: var(--black); }
-.tag-red { background: var(--red); color: var(--white); }
 
 .ha-tile-values { display: flex; flex-wrap: wrap; align-items: baseline; column-gap: 14px; }
 .ha-primary { font-weight: bold; font-size: clamp(16px, min(46cqh, 21cqw), 46px); line-height: 1; white-space: nowrap; }
-.ha-unit { font-size: 0.5em; margin-left: 2px; }
-.ha-secondary { font-size: clamp(12px, min(26cqh, 12cqw), 26px); white-space: nowrap; }
-.cold { color: var(--blue); }
-.warm { color: var(--red); }
+.ha-unit { font-size: 0.5em; font-weight: bold; margin-left: 2px; }
+.ha-secondary { font-size: clamp(12px, min(26cqh, 12cqw), 26px); font-weight: bold; white-space: nowrap; }
+
+/* Temperature signal: colored bar next to the (black) value */
+.cold, .warm { border-left: 9px solid; padding-left: 7px; }
+.cold { border-left-color: var(--blue); }
+.warm { border-left-color: var(--red); }
 
 .ha-footnote { font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }

@@ -13,10 +13,10 @@ DEFAULT_TIMEOUT = 10
 DEFAULT_TIME_FORMAT = "%d.%m.%Y %H:%M"
 
 # Signal thresholds for the room view
-COLD_BELOW = 18.0       # °C, temperature shown in blue
-WARM_ABOVE = 24.0       # °C, temperature shown in red
-HUMID_FROM = 65.0       # %, yellow FEUCHT tag
-BATTERY_LOW_BELOW = 20  # %, red BATTERIE tag
+COLD_BELOW = 18.0       # °C, blue bar next to the temperature
+WARM_ABOVE = 24.0       # °C, red bar next to the temperature
+HUMID_FROM = 65.0       # %, FEUCHT label
+BATTERY_LOW_BELOW = 20  # %, BATTERIE label
 
 OTHER_FLOOR_NAME = "Weitere"
 ENTITY_TILES_PER_ROW = 4
@@ -124,11 +124,11 @@ def room_tile(room):
 
     tags = []
     if room["offline"]:
-        tags.append({"text": "OFFLINE", "color": "yellow"})
+        tags.append("OFFLINE")
     if hum is not None and hum >= HUMID_FROM:
-        tags.append({"text": "FEUCHT", "color": "yellow"})
+        tags.append("FEUCHT")
     if battery is not None and battery < BATTERY_LOW_BELOW:
-        tags.append({"text": "BATTERIE", "color": "red"})
+        tags.append("BATTERIE")
 
     primary_class = ""
     if temp is not None and temp < COLD_BELOW:
@@ -257,7 +257,7 @@ class HomeAssistant(BasePlugin):
                 "primary_unit": "" if offline else attrs.get("unit_of_measurement", ""),
                 "primary_class": "",
                 "secondary": [f"{k.replace('_', ' ').title()}: {attrs[k]}" for k in keys if k in attrs],
-                "tags": [{"text": "OFFLINE", "color": "yellow"}] if offline else [],
+                "tags": ["OFFLINE"] if offline else [],
                 "footnote": eid,
             })
 

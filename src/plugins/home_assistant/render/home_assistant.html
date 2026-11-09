@@ -13,13 +13,13 @@
   <main class="ha-groups">
     {% for group in groups %}
     <section class="ha-group">
-      {% if group.name %}<div class="ha-tape tape-{{ loop.index0 % 3 }}">{{ group.name }}</div>{% endif %}
+      {% if group.name %}<div class="ha-tape">{{ group.name }}</div>{% endif %}
       <div class="ha-tiles">
         {% for tile in group.tiles %}
         <div class="ha-tile">
           <div class="ha-tile-head">
             <span class="ha-tile-title">{{ tile.title }}</span>
-            {% for tag in tile.tags %}<span class="ha-tag tag-{{ tag.color }}">{{ tag.text }}</span>{% endfor %}
+            {% for tag in tile.tags %}<span class="ha-tag">{{ tag }}</span>{% endfor %}
           </div>
           <div class="ha-tile-values">
             <span class="ha-primary {{ tile.primary_class }}">{{ tile.primary }}<span class="ha-unit">{{ tile.primary_unit }}</span></span>

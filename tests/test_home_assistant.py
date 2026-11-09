@@ -128,10 +128,6 @@ def tile_for(name):
     return room_tile(rooms_by_name(group_rooms(ROOMS_DATA))[name])
 
 
-def tag_texts(tile):
-    return [tag["text"] for tag in tile["tags"]]
-
-
 def test_normal_room_tile():
     tile = tile_for("Flur")
 
@@ -145,7 +141,7 @@ def test_cold_and_humid_room_tile():
     tile = tile_for("Werkstatt")
 
     assert tile["primary_class"] == "cold"
-    assert tag_texts(tile) == ["FEUCHT"]
+    assert tile["tags"] == ["FEUCHT"]
 
 
 def test_warm_room_tile():
@@ -155,7 +151,7 @@ def test_warm_room_tile():
 def test_low_battery_tile():
     tile = tile_for("Kind 2")
 
-    assert {"text": "BATTERIE", "color": "red"} in tile["tags"]
+    assert "BATTERIE" in tile["tags"]
 
 
 def test_offline_room_tile():
@@ -163,7 +159,7 @@ def test_offline_room_tile():
 
     assert tile["primary"] == "–"
     assert tile["secondary"] == []
-    assert tile["tags"] == [{"text": "OFFLINE", "color": "yellow"}]
+    assert tile["tags"] == ["OFFLINE"]
 
 
 # --- generate_image --------------------------------------------------------------------------
