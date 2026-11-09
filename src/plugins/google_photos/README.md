@@ -15,16 +15,23 @@ No API key is required. The plugin fetches the shared album page and extracts im
 3. In InkyPi, add the "Google Photos Album" plugin.
 4. Paste the album share link into the plugin settings under "Google Photos album share link URL" and save.
 
+## Settings
+- **Framing**
+  - *Automatic* (default): photos that keep at least 75 % of their area when cropped (e.g. 16:9, 4:3, 3:2 landscape) fill the display; portrait, square and panorama photos are shown completely.
+  - *Always fill the display*: crop every photo to the display.
+  - *Always show the whole photo*: never crop.
+- **Background around fitted photos**: a blurred copy of the photo (default) or a solid color.
+- **Photo saturation / contrast**: optional boost applied before the image is sent to the display (1.00 = unchanged). E-paper photos often look pale; values around 1.2–1.4 can help.
+
 ## How it works (brief)
-- The plugin loads the album's shared page and parses the embedded data to find image entries.
-- One image is selected at random on each render.
-- The image URL is adjusted to request a size close to your device resolution for best quality and performance.
+- The plugin loads the album's shared page and parses the embedded data to find image entries. The photo list is cached for one hour; if reloading fails, the last known list is used.
+- Photos are shown in random order without repetition: every photo is shown once before any photo repeats. Instances showing the same album share one round. The order restarts when the InkyPi service restarts.
+- Google scales the photo server-side to the smallest size that covers the display (based on the photo's original size), so it is never upscaled afterwards.
 
 ## Notes & limitations
 - Google may change the shared page format at any time; if parsing fails, check logs and update InkyPi.
 - Very large albums can take longer to parse on first load.
 - Only photos are supported; videos (if present in the album) are ignored.
-- The selected image is random per render; frequent refreshes may repeat images.
 - If your device is configured for vertical orientation, the plugin will request swapped width/height to match.
 
 ## Troubleshooting

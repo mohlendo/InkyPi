@@ -1,17 +1,74 @@
 <div class="form-group">
     <label for="url" class="form-label">Google Photos album share link URL:</label>
-    <input type="text" id="url" name="url" placeholder="Type something..." required class="form-input">
+    <input type="text" id="url" name="url" placeholder="https://photos.app.goo.gl/..." required class="form-input">
 </div>
 
 <div class="form-group">
     <span>Hint: You find the URL for the share link under the share options for the album.</span>
 </div>
 
+<div class="form-group">
+    <label for="scaleMode" class="form-label">Framing:</label>
+    <select id="scaleMode" name="scaleMode" class="form-input" onchange="updateBackgroundVisibility()">
+        <option value="auto">Automatic (fill landscape photos, show portrait photos completely)</option>
+        <option value="fill">Always fill the display (crop)</option>
+        <option value="fit">Always show the whole photo</option>
+    </select>
+</div>
+
+<div class="form-group" id="backgroundGroup">
+    <label class="form-label">Background around fitted photos:</label>
+    <div class="form-group">
+        <input type="radio" id="backgroundBlur" name="backgroundOption" value="blur">
+        <label for="backgroundBlur">Blur</label>
+        <input type="radio" id="backgroundColorOption" name="backgroundOption" value="color">
+        <label for="backgroundColorOption">Color</label>
+        <input type="color" id="backgroundColor" name="backgroundColor" value="#ffffff" class="color-picker"/>
+    </div>
+</div>
+
+<div class="form-group">
+    <label for="saturation" class="form-label">Photo saturation:</label>
+    <span id="saturation-value">1.00</span>
+    <input type="range" id="saturation" name="saturation" class="form-input" min="0.5" max="2" step="0.05" value="1"
+           style="max-width: 400px;" oninput="showFactor(this)">
+</div>
+
+<div class="form-group">
+    <label for="contrast" class="form-label">Photo contrast:</label>
+    <span id="contrast-value">1.00</span>
+    <input type="range" id="contrast" name="contrast" class="form-input" min="0.5" max="2" step="0.05" value="1"
+           style="max-width: 400px;" oninput="showFactor(this)">
+</div>
+
+<div class="form-group">
+    <span>Hint: e-paper photos often look pale; values around 1.2&ndash;1.4 can help. 1.00 leaves the photo unchanged.</span>
+</div>
+
 <script>
+    function showFactor(slider) {
+        document.getElementById(`${slider.id}-value`).textContent = parseFloat(slider.value).toFixed(2);
+    }
+
+    function updateBackgroundVisibility() {
+        const fill = document.getElementById('scaleMode').value === 'fill';
+        document.getElementById('backgroundGroup').style.display = fill ? 'none' : '';
+    }
+
     // populate form values from plugin settings
-    document.addEventListener('DOMContentLoaded', () => {        
+    document.addEventListener('DOMContentLoaded', () => {
+        let backgroundOption = 'blur';
         if (loadPluginSettings) {
-            document.getElementById('url').value = pluginSettings.url;
+            document.getElementById('url').value = pluginSettings.url || '';
+            document.getElementById('scaleMode').value = pluginSettings.scaleMode || 'auto';
+            document.getElementById('backgroundColor').value = pluginSettings.backgroundColor || '#ffffff';
+            document.getElementById('saturation').value = pluginSettings.saturation || '1';
+            document.getElementById('contrast').value = pluginSettings.contrast || '1';
+            backgroundOption = pluginSettings.backgroundOption || 'blur';
         }
+        document.querySelector(`input[name="backgroundOption"][value="${backgroundOption}"]`).checked = true;
+        showFactor(document.getElementById('saturation'));
+        showFactor(document.getElementById('contrast'));
+        updateBackgroundVisibility();
     });
 </script>

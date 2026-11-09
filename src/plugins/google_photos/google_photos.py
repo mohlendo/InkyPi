@@ -1,23 +1,33 @@
 from plugins.base_plugin.base_plugin import BasePlugin
-from PIL import Image
+from utils.http_client import get_http_session
+from utils.image_utils import pad_image_blur
+from PIL import Image, ImageColor, ImageEnhance, ImageOps
 from io import BytesIO
-import requests
-import logging
 from typing import List, Dict, Optional, Any
-import re
-import json5
+import logging
+import math
 import random
+import re
+import time
+import json5
 
 ImageInfo = Dict[str, Any]
 logger = logging.getLogger(__name__)
 
-def get_shared_album_html(album_shared_url: str, timeout_ms=40000):
+REQUEST_TIMEOUT_S = 40
+ALBUM_CACHE_TTL_S = 60 * 60   # the album list is re-read at most once per hour
+AUTO_FILL_MIN_KEPT = 0.75     # "auto" fills the display if at least this share of the photo stays visible
+
+
+# --- album page parsing ----------------------------------------------------------------------
+
+def get_shared_album_html(album_shared_url: str) -> Optional[str]:
     try:
-        response = requests.get(album_shared_url, timeout=timeout_ms / 1000)
+        response = get_http_session().get(album_shared_url, timeout=REQUEST_TIMEOUT_S)
         response.raise_for_status()
         return response.text
     except Exception as e:
-        logger.error(f"Error grabbing image from {album_shared_url}: {e}")
+        logger.error(f"Error loading Google Photos album page {album_shared_url}: {e}")
     return None
 
 def parse_phase_1(input_html: str) -> Optional[str]:
@@ -89,6 +99,8 @@ def parse_phase_3(input_data: Any) -> Optional[List[ImageInfo]]:
         # Basic type checks for image details
         if not isinstance(url, str) or not isinstance(width, (int, float)) or not isinstance(height, (int, float)):
             continue
+        if width <= 0 or height <= 0:
+            continue
 
         # Append the parsed ImageInfo
         parsed_images.append({"uid": uid, "url": url, "width": int(width), "height": int(height),
@@ -96,12 +108,7 @@ def parse_phase_3(input_data: Any) -> Optional[List[ImageInfo]]:
 
     return parsed_images if parsed_images else None
 
-def fetch_image_urls(album_shared_url: str) -> Optional[List[ImageInfo]]:
-    html = get_shared_album_html(album_shared_url)
-
-    if html is None:
-        return None
-
+def parse_album_html(html: str) -> Optional[List[ImageInfo]]:
     ph1 = parse_phase_1(html)
     if ph1 is None:
         logger.error("Phase 1 parsing failed: Could not extract data block from HTML.")
@@ -115,47 +122,158 @@ def fetch_image_urls(album_shared_url: str) -> Optional[List[ImageInfo]]:
     result = parse_phase_3(ph2)
     if result is None:
         logger.error("Phase 3 parsing failed: Could not extract image info from parsed data.")
-        return None
-
     return result
 
-def grab_image(image_info, dimensions, timeout_ms=40000):
-    """Grab an image from a URL and resize it to the specified dimensions."""
-    original_url = image_info['url']
+def fetch_image_urls(album_shared_url: str) -> Optional[List[ImageInfo]]:
+    html = get_shared_album_html(album_shared_url)
+    if html is None:
+        return None
+    return parse_album_html(html)
 
-    # Construct the dimensioned URL
-    dimension_string = f"=w{dimensions[0]}-h{dimensions[1]}"
-    cleaned_url = re.sub(r'=[swh]\d+(-h\d+)?$', '', original_url)
-    download_url = f"{cleaned_url}{dimension_string}"
-    try:
-        response = requests.get(download_url, timeout=timeout_ms / 1000)
-        response.raise_for_status()
-        img = Image.open(BytesIO(response.content))
-        return img
-    except Exception as e:
-        logger.error(f"Error grabbing image from {download_url}: {e}")
+
+# --- album cache and photo selection -------------------------------------------------------
+
+class AlbumCache:
+    """Keeps the parsed photo list per album URL, so the ~1 MB album page is not loaded on every refresh.
+
+    If reloading fails, the last known list is used.
+    """
+
+    def __init__(self, ttl_seconds):
+        self.ttl_seconds = ttl_seconds
+        self.entries = {}
+
+    def get(self, url, fetch, now):
+        entry = self.entries.get(url)
+        if entry and now - entry[0] < self.ttl_seconds:
+            return entry[1]
+
+        try:
+            infos = fetch(url)
+        except Exception as e:
+            logger.error(f"Loading Google Photos album failed: {e}")
+            infos = None
+
+        if infos:
+            self.entries[url] = (now, infos)
+            return infos
+        if entry:
+            logger.warning("Using cached Google Photos album list.")
+            return entry[1]
         return None
 
-class GooglePhotos(BasePlugin):   
+
+class PhotoPicker:
+    """Random order without repetition: every photo is shown once per round, and a new round
+    never starts with the photo that ended the previous one. Photos added to the album join
+    the current round."""
+
+    def __init__(self):
+        self.shown = set()
+        self.last = None
+
+    def pick(self, ids, rng=random):
+        candidates = [i for i in ids if i not in self.shown]
+        if not candidates:
+            self.shown = set()
+            candidates = [i for i in ids if i != self.last] or list(ids)
+        choice = rng.choice(candidates)
+        self.shown.add(choice)
+        self.last = choice
+        return choice
+
+
+# InkyPi keeps one plugin object per process, so this state lives as long as the service runs.
+# Keyed by album URL, so several playlist instances showing the same album share one round.
+_album_cache = AlbumCache(ALBUM_CACHE_TTL_S)
+_pickers: Dict[str, PhotoPicker] = {}
+
+
+# --- image sizing and processing -------------------------------------------------------------
+
+def cover_size(width, height, dimensions):
+    """Smallest size with the photo's aspect ratio that covers the whole display."""
+    target_w, target_h = dimensions
+    scale = max(target_w / width, target_h / height)
+    return (max(target_w, math.ceil(width * scale - 1e-6)),
+            max(target_h, math.ceil(height * scale - 1e-6)))
+
+def kept_fraction(width, height, dimensions):
+    """Share of the photo that stays visible when it is cropped to fill the display."""
+    photo_ratio = width / height
+    display_ratio = dimensions[0] / dimensions[1]
+    return min(photo_ratio, display_ratio) / max(photo_ratio, display_ratio)
+
+def resolve_scale_mode(mode, width, height, dimensions):
+    if mode in ("fill", "fit"):
+        return mode
+    return "fill" if kept_fraction(width, height, dimensions) >= AUTO_FILL_MIN_KEPT else "fit"
+
+def download_url(image_info, size):
+    # Google scales server-side to fit into w x h; requesting the cover size avoids any upscaling later
+    base_url = re.sub(r'=[swh]\d+(-h\d+)?$', '', image_info['url'])
+    return f"{base_url}=w{size[0]}-h{size[1]}"
+
+def grab_image(image_info, size):
+    url = download_url(image_info, size)
+    try:
+        response = get_http_session().get(url, timeout=REQUEST_TIMEOUT_S)
+        response.raise_for_status()
+        img = ImageOps.exif_transpose(Image.open(BytesIO(response.content)))
+        return img.convert("RGB")
+    except Exception as e:
+        logger.error(f"Error downloading photo {url}: {e}")
+        return None
+
+def compose(img, dimensions, scale_mode, background_option="blur", background_color=None):
+    if scale_mode == "fill":
+        return ImageOps.fit(img, dimensions, method=Image.Resampling.LANCZOS)
+    if background_option == "color":
+        color = ImageColor.getrgb(background_color or "#ffffff")
+        return ImageOps.pad(img, dimensions, color=color, method=Image.Resampling.LANCZOS)
+    return pad_image_blur(img, dimensions)
+
+def parse_factor(value, default=1.0):
+    try:
+        factor = float(value)
+    except (TypeError, ValueError):
+        return default
+    return factor if math.isfinite(factor) and factor > 0 else default
+
+def enhance(img, saturation=1.0, contrast=1.0):
+    if saturation != 1.0:
+        img = ImageEnhance.Color(img).enhance(saturation)
+    if contrast != 1.0:
+        img = ImageEnhance.Contrast(img).enhance(contrast)
+    return img
+
+
+class GooglePhotos(BasePlugin):
     def generate_image(self, settings, device_config):
         url = settings.get('url')
         if not url:
             raise RuntimeError("URL is required.")
 
-        dimensions = device_config.get_resolution()
+        dimensions = tuple(device_config.get_resolution())
         if device_config.get_config("orientation") == "vertical":
             dimensions = dimensions[::-1]
 
-        logger.info(f"Grabbing image from: {url}")
-
-        image_infos = fetch_image_urls(url)
-        if image_infos is None:
+        image_infos = _album_cache.get(url, fetch_image_urls, time.monotonic())
+        if not image_infos:
             raise RuntimeError("Could not fetch image infos from Google Photos album.")
 
-        random_image_info = random.choice(image_infos)
-        image = grab_image(random_image_info, dimensions, timeout_ms=40000)
+        photos = {info["uid"]: info for info in image_infos}
+        photo = photos[_pickers.setdefault(url, PhotoPicker()).pick(list(photos))]
 
+        size = cover_size(photo["width"], photo["height"], dimensions)
+        scale_mode = resolve_scale_mode(settings.get("scaleMode", "auto"), photo["width"], photo["height"], dimensions)
+        logger.info(f"Showing photo {photo['uid'][:12]}… ({photo['width']}x{photo['height']}, {scale_mode}) "
+                    f"from {len(photos)} photos")
+
+        image = grab_image(photo, size)
         if not image:
             raise RuntimeError("Failed to load image, please check logs.")
 
-        return image
+        image = compose(image, dimensions, scale_mode, settings.get("backgroundOption", "blur"),
+                        settings.get("backgroundColor"))
+        return enhance(image, parse_factor(settings.get("saturation")), parse_factor(settings.get("contrast")))
