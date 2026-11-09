@@ -89,10 +89,10 @@
 /* Warnings (OFFLINE, FEUCHT, BATTERIE): black label, yellow text */
 .ha-tag {
   flex-shrink: 0;
-  padding: 1px 6px;
+  padding: 1px 7px;
   font-weight: bold;
-  font-size: clamp(11px, 16cqh, 15px);
-  letter-spacing: 0.06em;
+  font-size: clamp(13px, 19cqh, 17px);
+  letter-spacing: 0.1em;
   background: var(--black);
   color: var(--yellow);
 }
