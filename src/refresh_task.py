@@ -29,6 +29,32 @@ class RefreshTask:
         self.refresh_event.set()
         self.refresh_result = {}
 
+        # Name of the playlist that was active when the display was put on hold (None = not held)
+        self.hold_playlist = None
+
+    def hold(self, playlist_name):
+        """Pauses the playlist rotation until released or until another playlist becomes active."""
+        logger.info(f"Display held. | playlist: {playlist_name}")
+        self.hold_playlist = playlist_name
+
+    def release(self):
+        if self.hold_playlist is not None:
+            logger.info("Display hold released.")
+        self.hold_playlist = None
+
+    def is_held(self):
+        return self.hold_playlist is not None
+
+    def hold_blocks_refresh(self, playlist_manager, current_dt):
+        """True while held and the same playlist is active; releases the hold once the playlist changes."""
+        if not self.is_held():
+            return False
+        active = playlist_manager.determine_active_playlist(current_dt)
+        if active and active.name == self.hold_playlist:
+            return True
+        self.release()
+        return False
+
     def start(self):
         """Starts the background thread for refreshing the display."""
         if not self.thread or not self.thread.is_alive():
@@ -98,6 +124,10 @@ class RefreshTask:
 
                         if self.device_config.get_config("log_system_stats"):
                             self.log_system_stats()
+
+                        if self.hold_blocks_refresh(playlist_manager, current_dt):
+                            logger.info("Display is held, skipping playlist refresh.")
+                            continue
 
                         # handle refresh based on playlists
                         logger.info(f"Running interval refresh check. | current_time: {current_dt.strftime('%Y-%m-%d %H:%M:%S')}")

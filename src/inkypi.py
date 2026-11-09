@@ -25,6 +25,7 @@ from werkzeug.serving import is_running_from_reloader
 from config import Config
 from display.display_manager import DisplayManager
 from refresh_task import RefreshTask
+from buttons import start_buttons
 from blueprints.main import main_bp
 from blueprints.settings import settings_bp
 from blueprints.plugin import plugin_bp
@@ -88,6 +89,9 @@ if __name__ == '__main__':
 
     # start the background refresh task
     refresh_task.start()
+
+    # listen to the hardware buttons of the display (opt-in: "buttons": {"enabled": true} in device.json)
+    start_buttons(device_config, refresh_task, display_manager)
 
     # display default inkypi image on startup
     if device_config.get_config("startup") is True:
