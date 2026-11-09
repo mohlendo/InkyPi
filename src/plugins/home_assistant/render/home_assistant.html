@@ -1,33 +1,36 @@
 {% extends "plugin.html" %}
 
 {% block content %}
-<div class="ha-dashboard">
-  {% if plugin_settings.displayRefreshTime == "true" %}
-  <div class="last-refresh">Last refresh: {{ last_refresh_time }}</div>
-  {% endif %}
+<div class="ha">
+  <header class="ha-header">
+    <div class="ha-title">{{ title }}</div>
+    <div class="ha-meta">
+      {% if summary %}<span>{{ summary }}</span>{% endif %}
+      <span>{{ timestamp }}</span>
+    </div>
+  </header>
 
-  <div class="header">
-    <div class="title">{{ title }}</div>
-  </div>
-
-  <div class="entities">
-    {% for item in items %}
-    <div class="entity-card">
-      <div class="entity-name">{{ item.name }}</div>
-      <div class="entity-state">
-        <span class="state">{{ item.state }}</span>
-        {% if item.unit %}<span class="unit">{{ item.unit }}</span>{% endif %}
-      </div>
-      {% if item.attributes and item.attributes|length > 0 %}
-      <div class="attributes">
-        {% for a in item.attributes %}
-        <div class="attribute"><span class="key">{{ a.key }}</span><span class="value">{{ a.value }}</span></div>
+  <main class="ha-groups">
+    {% for group in groups %}
+    <section class="ha-group">
+      {% if group.name %}<div class="ha-tape tape-{{ loop.index0 % 3 }}">{{ group.name }}</div>{% endif %}
+      <div class="ha-tiles">
+        {% for tile in group.tiles %}
+        <div class="ha-tile">
+          <div class="ha-tile-head">
+            <span class="ha-tile-title">{{ tile.title }}</span>
+            {% for tag in tile.tags %}<span class="ha-tag tag-{{ tag.color }}">{{ tag.text }}</span>{% endfor %}
+          </div>
+          <div class="ha-tile-values">
+            <span class="ha-primary {{ tile.primary_class }}">{{ tile.primary }}<span class="ha-unit">{{ tile.primary_unit }}</span></span>
+            {% for value in tile.secondary %}<span class="ha-secondary">{{ value }}</span>{% endfor %}
+          </div>
+          {% if tile.footnote %}<div class="ha-footnote">{{ tile.footnote }}</div>{% endif %}
+        </div>
         {% endfor %}
       </div>
-      {% endif %}
-      <div class="entity-id">{{ item.entity_id }}</div>
-    </div>
+    </section>
     {% endfor %}
-  </div>
+  </main>
 </div>
 {% endblock %}

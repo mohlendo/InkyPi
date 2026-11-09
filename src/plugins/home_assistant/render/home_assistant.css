@@ -1,25 +1,105 @@
-/* Basic Reset */
+/* Courier Prime (SIL Open Font License, see fonts/OFL.txt) - typewriter look */
+@font-face { font-family: "Courier Prime"; font-weight: normal; src: url("fonts/CourierPrime-Regular.ttf") format("truetype"); }
+@font-face { font-family: "Courier Prime"; font-weight: bold; src: url("fonts/CourierPrime-Bold.ttf") format("truetype"); }
+
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
-.ha-dashboard { position: relative; width: 100%; height: 100%; display: flex; flex-direction: column; gap: 1dvh; font-family: "Jost"; }
-
-.last-refresh { position: absolute; top: 0.5dvh; right: 0.5dvw; font-size: min(2dvh, 2vw); font-weight: bold; padding: 0.3dvh 0.5dvw; }
-
-.header { width: 100%; display: flex; justify-content: center; align-items: end; height: 12dvh; }
-.title { font-size: min(50cqh, 8cqi); font-weight: bold; text-align: center; line-height: 1; width: 100%; }
-
-.entities { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1dvh 1dvw; width: 100%; height: 100%; padding: 0.5dvh 0.5dvw; }
-
-.entity-card { border: 2px solid currentColor; border-radius: 6px; padding: 0.8dvh 0.8dvw; display: flex; flex-direction: column; gap: 0.6dvh; min-height: 0; }
-.entity-name { font-size: min(28cqmin, 5cqi); font-weight: 700; line-height: 1; }
-.entity-state { font-size: min(26cqmin, 4.5cqi); display: flex; gap: 0.3em; align-items: baseline; }
-.entity-state .unit { font-size: 0.55em; opacity: 0.9; }
-.attributes { display: flex; flex-direction: column; gap: 0.2dvh; }
-.attribute { display: flex; justify-content: space-between; font-size: min(20cqmin, 3.6cqi); }
-.attribute .key { opacity: 0.85; }
-.attribute .value { font-weight: 600; }
-.entity-id { font-size: min(16cqmin, 3cqi); opacity: 0.6; }
-
-@container (max-width: 800px) {
-  .entities { grid-template-columns: 1fr; }
+/* Only the pure colors of the Spectra 6 panel, so they map 1:1 to the display without dithering */
+:root {
+  --black: #000000;
+  --white: #ffffff;
+  --yellow: #ffff00;
+  --red: #ff0000;
+  --blue: #0000ff;
+  --green: #00ff00;
 }
+
+.ha {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  font-family: "Courier Prime", "Courier New", monospace;
+  color: var(--black);
+  background: var(--white);
+}
+
+/* Header: title left, status + time right, heavy rule below */
+.ha-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding-bottom: 3px;
+  border-bottom: 3px solid var(--black);
+}
+.ha-title { font-weight: bold; font-size: 28px; line-height: 1; text-transform: uppercase; letter-spacing: 0.06em; }
+.ha-meta { display: flex; gap: 18px; font-size: 15px; }
+
+/* One band per floor */
+.ha-groups { flex: 1; display: flex; flex-direction: column; min-height: 0; }
+.ha-group {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  padding-top: 5px;
+  border-bottom: 1px solid var(--black);
+}
+.ha-group:last-child { border-bottom: none; }
+
+/* Floor name as label-maker tape */
+.ha-tape {
+  align-self: flex-start;
+  padding: 1px 9px;
+  font-weight: bold;
+  font-size: 14px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+.tape-0 { background: var(--blue); color: var(--white); }
+.tape-1 { background: var(--green); color: var(--black); }
+.tape-2 { background: var(--black); color: var(--white); }
+
+/* Rooms of a floor side by side */
+.ha-tiles { flex: 1; display: flex; min-height: 0; }
+.ha-tile {
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 2px;
+  padding: 0 10px;
+  border-left: 1px solid var(--black);
+  container-type: size;
+}
+.ha-tile:first-child { padding-left: 0; border-left: none; }
+
+.ha-tile-head { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.ha-tile-title {
+  font-weight: bold;
+  font-size: clamp(11px, 20cqh, 17px);
+  line-height: 1.35; /* room for umlaut dots, the title clips overflow for the ellipsis */
+  text-transform: uppercase;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ha-tag {
+  flex-shrink: 0;
+  padding: 0 4px;
+  font-weight: bold;
+  font-size: clamp(10px, 15cqh, 14px);
+  letter-spacing: 0.06em;
+}
+.tag-yellow { background: var(--yellow); color: var(--black); }
+.tag-red { background: var(--red); color: var(--white); }
+
+.ha-tile-values { display: flex; flex-wrap: wrap; align-items: baseline; column-gap: 14px; }
+.ha-primary { font-weight: bold; font-size: clamp(16px, min(46cqh, 21cqw), 46px); line-height: 1; white-space: nowrap; }
+.ha-unit { font-size: 0.5em; margin-left: 2px; }
+.ha-secondary { font-size: clamp(12px, min(26cqh, 12cqw), 26px); white-space: nowrap; }
+.cold { color: var(--blue); }
+.warm { color: var(--red); }
+
+.ha-footnote { font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
