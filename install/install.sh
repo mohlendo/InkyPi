@@ -2,12 +2,17 @@
 
 # =============================================================================
 # Script Name: install.sh
-# Description: This script automates the installatin of InkyPI and creation of
+# Description: This script automates the installation of InkyPI and creation of
 #              the InkyPI service.
 #
 # Usage: ./install.sh [-W <waveshare_device>]
-#        -W <waveshare_device> (optional) Install for a Waveshare device, 
+#        -W <waveshare_device> (optional) Install for a Waveshare device,
 #                               specifying the device model type, e.g. epd7in3e.
+#
+#                               Alternatively the path to the driver within the
+#                               waveshareteam/e-Paper repository can be given,
+#                               e.g. E-paper_Separate_Program/3.6inch_e-Paper_E/
+#                               RaspberryPi_JetsonNano/python/lib/waveshare_epd/epd3in6e.py
 #
 #                               If not specified then the Pimoroni Inky display
 #                               is assumed.
@@ -40,7 +45,7 @@ SERVICE_FILE_TARGET="/etc/systemd/system/$SERVICE_FILE"
 APT_REQUIREMENTS_FILE="$SCRIPT_DIR/debian-requirements.txt"
 PIP_REQUIREMENTS_FILE="$SCRIPT_DIR/requirements.txt"
 
-# 
+#
 # Additional requirements for Waveshare support.
 #
 # empty means no WS support required, otherwise we expect the type of display
@@ -48,11 +53,45 @@ PIP_REQUIREMENTS_FILE="$SCRIPT_DIR/requirements.txt"
 WS_TYPE=""
 WS_REQUIREMENTS_FILE="$SCRIPT_DIR/ws-requirements.txt"
 
-# Parse the agumments, looking for the -W option.
+# Where the driver is fetched from in the Waveshare e-Paper repository.  Most
+# models live in the common driver directory, but models that are only
+# published under E-paper_Separate_Program can override WS_DRIVER_DIR by
+# passing a repo relative path to -W (see resolve_waveshare_type).
+WS_DRIVER_REPO="waveshareteam/e-Paper"
+WS_DRIVER_BRANCH="master"
+WS_DRIVER_DEFAULT_DIR="RaspberryPi_JetsonNano/python/lib/waveshare_epd"
+WS_DRIVER_DIR="$WS_DRIVER_DEFAULT_DIR"
+
+# Work out the screen type, and where its driver lives, from the -W argument.
+#
+# The argument is either a bare model name, e.g. epd7in3e, or the path to the
+# driver within the waveshareteam/e-Paper repository, e.g.
+# E-paper_Separate_Program/3.6inch_e-Paper_E/RaspberryPi_JetsonNano/python/lib/waveshare_epd/epd3in6e.py
+#
+# The path form is needed for the models that are not published in the common
+# driver directory.  Either way WS_TYPE ends up as the bare module name, e.g.
+# epd3in6e, as that is what is written to device.json and imported at runtime.
+resolve_waveshare_type() {
+    local arg=${1#/}
+
+    if [[ $arg == */* ]]; then
+        WS_DRIVER_DIR=${arg%/*}
+        arg=${arg##*/}
+    fi
+
+    WS_TYPE=${arg%.py}
+
+    if [[ -z $WS_TYPE ]]; then
+        echo "Option -W requires the model type of the Waveshare screen." >&2
+        exit 1
+    fi
+}
+
+# Parse the arguments, looking for the -W option.
 parse_arguments() {
     while getopts ":W:" opt; do
         case $opt in
-            W) WS_TYPE=$OPTARG
+            W) resolve_waveshare_type "$OPTARG"
                 echo "Optional parameter WS is set for Waveshare support.  Screen type is: $WS_TYPE"
                 ;;
             \?) echo "Invalid option: -$OPTARG." >&2
@@ -78,7 +117,8 @@ fetch_waveshare_driver() {
 
   DRIVER_DEST="$SRC_PATH/display/waveshare_epd"
   DRIVER_FILE="$DRIVER_DEST/$WS_TYPE.py"
-  DRIVER_URL="https://raw.githubusercontent.com/waveshareteam/e-Paper/master/RaspberryPi_JetsonNano/python/lib/waveshare_epd/$WS_TYPE.py"
+  DRIVER_BASE_URL="https://raw.githubusercontent.com/$WS_DRIVER_REPO/$WS_DRIVER_BRANCH/$WS_DRIVER_DIR"
+  DRIVER_URL="$DRIVER_BASE_URL/$WS_TYPE.py"
 
   # Attempt to download the file
   if [ -f "$DRIVER_FILE" ]; then
@@ -86,19 +126,27 @@ fetch_waveshare_driver() {
   elif curl --silent --fail -o "$DRIVER_FILE" "$DRIVER_URL"; then
     echo_success "\tWaveshare driver '$WS_TYPE.py' successfully downloaded to $DRIVER_FILE"
   else
-    echo_error "ERROR: Failed to download Waveshare driver '$WS_TYPE.py'."
+    rm -f "$DRIVER_FILE"
+    echo_error "ERROR: Failed to download Waveshare driver '$WS_TYPE.py' from:"
+    echo_error "$DRIVER_URL"
     echo_error "Ensure the model name is correct and exists at:"
-    echo_error "https://github.com/waveshareteam/e-Paper/tree/master/RaspberryPi_JetsonNano/python/lib/waveshare_epd"
+    echo_error "https://github.com/$WS_DRIVER_REPO/tree/$WS_DRIVER_BRANCH/$WS_DRIVER_DIR"
     exit 1
   fi
 
+  # Prefer the epdconfig.py that sits alongside the driver, as the separate
+  # programs ship their own copy, falling back to the common one.
   EPD_CONFIG_FILE="$DRIVER_DEST/epdconfig.py"
-  EPD_CONFIG_URL="https://raw.githubusercontent.com/waveshareteam/e-Paper/refs/heads/master/RaspberryPi_JetsonNano/python/lib/waveshare_epd/epdconfig.py"
+  EPD_CONFIG_URL="$DRIVER_BASE_URL/epdconfig.py"
+  EPD_CONFIG_FALLBACK_URL="https://raw.githubusercontent.com/$WS_DRIVER_REPO/$WS_DRIVER_BRANCH/$WS_DRIVER_DEFAULT_DIR/epdconfig.py"
   if [ -f "$EPD_CONFIG_FILE" ]; then
     echo_success "\tWaveshare epdconfig file already exists at $EPD_CONFIG_FILE"
   elif curl --silent --fail -o "$EPD_CONFIG_FILE" "$EPD_CONFIG_URL"; then
     echo_success "\tWaveshare epdconfig file successfully downloaded to $EPD_CONFIG_FILE"
+  elif curl --silent --fail -o "$EPD_CONFIG_FILE" "$EPD_CONFIG_FALLBACK_URL"; then
+    echo_success "\tWaveshare epdconfig file successfully downloaded to $EPD_CONFIG_FILE"
   else
+    rm -f "$EPD_CONFIG_FILE"
     echo_error "ERROR: Failed to download Waveshare epdconfig file."
     exit 1
   fi
@@ -107,13 +155,13 @@ fetch_waveshare_driver() {
 enable_interfaces(){
   echo "Enabling interfaces required for $APPNAME"
   #enable spi
-  sudo sed -i 's/^dtparam=spi=.*/dtparam=spi=on/' /boot/config.txt
-  sudo sed -i 's/^#dtparam=spi=.*/dtparam=spi=on/' /boot/config.txt
+  sudo sed -i 's/^dtparam=spi=.*/dtparam=spi=on/' /boot/firmware/config.txt
+  sudo sed -i 's/^#dtparam=spi=.*/dtparam=spi=on/' /boot/firmware/config.txt
   sudo raspi-config nonint do_spi 0
   echo_success "\tSPI Interface has been enabled."
   #enable i2c
-  sudo sed -i 's/^dtparam=i2c_arm=.*/dtparam=i2c_arm=on/' /boot/config.txt
-  sudo sed -i 's/^#dtparam=i2c_arm=.*/dtparam=i2c_arm=on/' /boot/config.txt
+  sudo sed -i 's/^dtparam=i2c_arm=.*/dtparam=i2c_arm=on/' /boot/firmware/config.txt
+  sudo sed -i 's/^#dtparam=i2c_arm=.*/dtparam=i2c_arm=on/' /boot/firmware/config.txt
   sudo raspi-config nonint do_i2c 0
   echo_success "\tI2C Interface has been enabled."
 
@@ -294,7 +342,7 @@ start_service() {
   sudo systemctl start $SERVICE_FILE
 }
 
-copy_project() {
+install_src() {
   # Check if an existing installation is present
   echo "Installing $APPNAME to $INSTALL_PATH"
   if [[ -d $INSTALL_PATH ]]; then
@@ -306,6 +354,11 @@ copy_project() {
 
   ln -sf "$SRC_PATH" "$INSTALL_PATH/src"
   show_loader "\tCreating symlink from $SRC_PATH to $INSTALL_PATH/src"
+}
+
+install_cli() {
+  cp -r "$SCRIPT_DIR/cli" "$INSTALL_PATH/"
+  sudo chmod +x "$INSTALL_PATH/cli/"*
 }
 
 # Get Raspberry Pi hostname
@@ -368,7 +421,8 @@ else
   echo "OS version is not Bookworm - skipping zramswap setup."
 fi
 setup_earlyoom_service
-copy_project
+install_src
+install_cli
 create_venv
 install_executable
 install_config
@@ -379,6 +433,6 @@ fi
 install_app_service
 
 echo "Update JS and CSS files"
-bash $SCRIPT_DIR/update_vendors.sh
+bash $SCRIPT_DIR/update_vendors.sh > /dev/null
 
 ask_for_reboot

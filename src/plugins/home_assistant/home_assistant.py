@@ -8,10 +8,6 @@ logger = logging.getLogger(__name__)
 DEFAULT_TIMEOUT = 10
 
 class HomeAssistant(BasePlugin):
-
-    def get_device_display_settings(self):
-        return {'inky_display_saturation': 0.0}
-
     def generate_settings_template(self):
         template_params = super().generate_settings_template()
         # Advertise required API key
@@ -92,6 +88,9 @@ class HomeAssistant(BasePlugin):
 
         # Render via HTML template similar to weather plugin
         return self.render_image(dimensions, "home_assistant.html", "home_assistant.css", template_params)
+
+    def get_device_display_settings(self):
+        return {'inky_saturation': 0.0}
 
     def get_entity_state(self, base_url, token, entity_id):
         url = f"{base_url.rstrip('/')}/api/states/{entity_id}"

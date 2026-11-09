@@ -13,7 +13,7 @@ from PIL import Image
 logger = logging.getLogger(__name__)
 
 class RefreshTask:
-    """Handles the logic for refreshing the display using a backgroud thread."""
+    """Handles the logic for refreshing the display using a background thread."""
 
     def __init__(self, device_config, display_manager):
         self.device_config = device_config
@@ -50,7 +50,7 @@ class RefreshTask:
         """Background task that manages the periodic refresh of the display.
 
         This function runs in a loop, sleeping for a configured duration (`plugin_cycle_interval_seconds`) or until
-        manually triggered via `manual_update()`. Detrmines the next plugin to refresh based on active playlists and
+        manually triggered via `manual_update()`. Determines the next plugin to refresh based on active playlists and
         updates the display accordingly.
 
         Workflow:
@@ -64,7 +64,7 @@ class RefreshTask:
         5. Updates the refresh metadata in the device configuration.
         6. Repeats the process until `stop()` is called.
 
-        Handles any exceptions that occur during the refresh process and ensures the refresh event is set
+        Handles any exceptions that occur during the refresh process and ensures the refresh event is set 
         to indicate completion.
 
         Exceptions:
@@ -115,12 +115,11 @@ class RefreshTask:
                         image_hash = compute_image_hash(image)
 
                         refresh_info = refresh_action.get_refresh_info()
-                        device_display_settings = plugin.get_device_display_settings()
                         refresh_info.update({"refresh_time": current_dt.isoformat(), "image_hash": image_hash})
                         # check if image is the same as current image
                         if image_hash != latest_refresh.image_hash:
-                            logger.info(f"Updating display. | refresh_info: {refresh_info} | device_display_settings: {device_display_settings}")
-                            self.display_manager.display_image(image, image_settings=plugin.config.get("image_settings", []), device_display_settings=device_display_settings)
+                            logger.info(f"Updating display. | refresh_info: {refresh_info}")
+                            self.display_manager.display_image(image, image_settings=plugin.config.get("image_settings", []), device_display_settings=plugin.get_device_display_settings())
                         else:
                             logger.info(f"Image already displayed, skipping refresh. | refresh_info: {refresh_info}")
 
@@ -148,7 +147,7 @@ class RefreshTask:
             if self.refresh_result.get("exception"):
                 raise self.refresh_result.get("exception")
         else:
-            logger.warn("Background refresh task is not running, unable to do a manual update")
+            logger.warning("Background refresh task is not running, unable to do a manual update")
 
     def signal_config_change(self):
         """Notify the background thread that config has changed (e.g., interval updated)."""
@@ -187,7 +186,7 @@ class RefreshTask:
         logger.info(f"Determined next plugin. | active_playlist: {playlist.name} | plugin_instance: {plugin.name}")
 
         return playlist, plugin
-
+    
     def log_system_stats(self):
         metrics = {
             'cpu_percent': psutil.cpu_percent(interval=1),
@@ -205,22 +204,22 @@ class RefreshTask:
 
 class RefreshAction:
     """Base class for a refresh action. Subclasses should override the methods below."""
-
+    
     def refresh(self, plugin, device_config, current_dt):
         """Perform a refresh operation and return the updated image."""
         raise NotImplementedError("Subclasses must implement the refresh method.")
-
+    
     def get_refresh_info(self):
         """Return refresh metadata as a dictionary."""
         raise NotImplementedError("Subclasses must implement the get_refresh_info method.")
-
+    
     def get_plugin_id(self):
         """Return the plugin ID associated with this refresh."""
         raise NotImplementedError("Subclasses must implement the get_plugin_id method.")
 
 class ManualRefresh(RefreshAction):
     """Performs a manual refresh based on a plugin's ID and its associated settings.
-
+    
     Attributes:
         plugin_id (str): The ID of the plugin to refresh.
         plugin_settings (dict): The settings for the manual refresh.
@@ -275,7 +274,7 @@ class PlaylistRefresh(RefreshAction):
 
         # Check if a refresh is needed based on the plugin instance's criteria
         if self.plugin_instance.should_refresh(current_dt) or self.force:
-            logger.info(f"Refreshing plugin instance. | plugin_instance: '{self.plugin_instance.name}'")
+            logger.info(f"Refreshing plugin instance. | plugin_instance: '{self.plugin_instance.name}'") 
             # Generate a new image
             image = plugin.generate_image(self.plugin_instance.settings, device_config)
             image.save(plugin_image_path)

@@ -2,6 +2,7 @@ import logging
 import os
 from utils.app_utils import resolve_path, get_fonts
 from utils.image_utils import take_screenshot_html
+from utils.image_loader import AdaptiveImageLoader
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 from pathlib import Path
 import asyncio
@@ -38,6 +39,9 @@ class BasePlugin:
     def __init__(self, config, **dependencies):
         self.config = config
 
+        # Initialize adaptive image loader for device-aware image processing
+        self.image_loader = AdaptiveImageLoader()
+
         self.render_dir = self.get_plugin_dir("render")
         if os.path.exists(self.render_dir):
             # instantiate jinja2 env with base plugin and current plugin render directories
@@ -49,6 +53,21 @@ class BasePlugin:
 
     def generate_image(self, settings, device_config):
         raise NotImplementedError("generate_image must be implemented by subclasses")
+
+    def cleanup(self, settings):
+        """Optional cleanup method that plugins can override to delete associated resources.
+
+        Called when a plugin instance is deleted. Plugins should override this to clean up
+        any files, external resources, or other data associated with the plugin instance.
+
+        Args:
+            settings: The plugin instance's settings dict, which may contain file paths or other resources
+        """
+        pass  # Default implementation does nothing
+
+    def get_device_display_settings(self):
+        """Optional per-plugin display driver overrides, e.g. {'inky_saturation': 0.0}."""
+        return {}
 
     def get_plugin_id(self):
         return self.config.get("id")
@@ -87,6 +106,3 @@ class BasePlugin:
         rendered_html = template.render(template_params)
 
         return take_screenshot_html(rendered_html, dimensions)
-
-    def get_device_display_settings(self):
-        return {}

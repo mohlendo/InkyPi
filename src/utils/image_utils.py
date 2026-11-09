@@ -6,11 +6,12 @@ import logging
 import hashlib
 import tempfile
 import subprocess
+import shutil
 
 logger = logging.getLogger(__name__)
 
 def get_image(image_url):
-    response = requests.get(image_url)
+    response = requests.get(image_url, timeout=30)
     img = None
     if 200 <= response.status_code < 300 or response.status_code == 304:
         img = Image.open(BytesIO(response.content))
@@ -61,18 +62,22 @@ def resize_image(image, desired_size, image_settings=[]):
     return image.resize((desired_width, desired_height), Image.LANCZOS)
 
 def apply_image_enhancement(img, image_settings={}):
+    # Convert image to RGB mode if necessary for enhancement operations
+    # ImageEnhance requires RGB mode for operations like blend
+    if img.mode not in ('RGB', 'L'):
+        img = img.convert('RGB')
 
-    # Apply Brightness
-    img = ImageEnhance.Brightness(img).enhance(image_settings.get("brightness", 1.0))
-
-    # Apply Contrast
-    img = ImageEnhance.Contrast(img).enhance(image_settings.get("contrast", 1.0))
-
-    # Apply Saturation (Color)
-    img = ImageEnhance.Color(img).enhance(image_settings.get("saturation", 1.0))
-
-    # Apply Sharpness
-    img = ImageEnhance.Sharpness(img).enhance(image_settings.get("sharpness", 1.0))
+    # Each enhance() call blends over the full image, so skip factors of 1.0
+    # (the no-op default) to avoid wasted full-frame passes on low-resource devices.
+    enhancements = [
+        (ImageEnhance.Brightness, image_settings.get("brightness", 1.0)),
+        (ImageEnhance.Contrast, image_settings.get("contrast", 1.0)),
+        (ImageEnhance.Color, image_settings.get("saturation", 1.0)),
+        (ImageEnhance.Sharpness, image_settings.get("sharpness", 1.0)),
+    ]
+    for enhancer, factor in enhancements:
+        if factor != 1.0:
+            img = enhancer(img).enhance(factor)
 
     return img
 
@@ -100,15 +105,32 @@ def take_screenshot_html(html_str, dimensions, timeout_ms=None):
 
     return image
 
+def _find_chromium_binary():
+    """Find the first available Chromium-based binary in system PATH."""
+    candidates = ["chromium-headless-shell", "chromium", "chrome"]
+    for candidate in candidates:
+        path = shutil.which(candidate)
+        if path:
+            logger.debug(f"Found browser binary: {candidate} at {path}")
+            return candidate
+    return None
+
+
 def take_screenshot(target, dimensions, timeout_ms=None):
     image = None
     try:
+        # Find available browser binary
+        browser = _find_chromium_binary()
+        if not browser:
+            logger.error("No Chromium-based browser found. Install chromium, chromium-headless-shell, or chrome.")
+            return None
+
         # Create a temporary output file for the screenshot
         with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as img_file:
             img_file_path = img_file.name
 
         command = [
-            "chromium-headless-shell",
+            browser,
             target,
             "--headless",
             f"--screenshot={img_file_path}",
@@ -124,16 +146,17 @@ def take_screenshot(target, dimensions, timeout_ms=None):
             "--disable-extensions",
             "--disable-plugins",
             "--mute-audio",
+            "--renderer-process-limit=1",
+            "--no-zygote",
             "--no-sandbox"
         ]
         if timeout_ms:
             command.append(f"--timeout={timeout_ms}")
-        result = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        result = subprocess.run(command, capture_output=True, check=False)
 
         # Check if the process failed or the output file is missing
         if result.returncode != 0 or not os.path.exists(img_file_path):
-            logger.error("Failed to take screenshot:")
-            logger.error(result.stderr.decode('utf-8'))
+            logger.error(f"Failed to take screenshot (return code: {result.returncode})")
             return None
 
         # Load the image using PIL

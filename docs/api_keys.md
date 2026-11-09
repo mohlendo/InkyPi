@@ -45,19 +45,6 @@ Required for the Weather Plugin
     OPEN_WEATHER_MAP_SECRET=your-key
     ```
 
-## NASA Astronomy Picture Of the Day Key
-
-Required for the APOD Plugin
-
-- Request an API key on [NASA APIs](https://api.nasa.gov/)
-   - Fill your First name, Last name, and e-mail address
-- The APOD plugin uses the [NASA APIs](https://api.nasa.gov/)
-   - Free for up to 1,000 requests per hour
-- Store your api key in the .env file with the key `NASA_SECRET`
-    ```
-    NASA_SECRET=your-key
-    ```
-
 ## Unsplash Key
 
 Required for the Unsplash Plugin
@@ -81,4 +68,16 @@ Required for the GitHub Plugin
 - Store your api key in the .env file with the key `GITHUB_SECRET`
     ```
     GITHUB_SECRET=your-key
+    ```
+
+## Immich Key
+
+Required for the Image Album plugin for the Immich Provider
+
+- Login to your Immich instance https://my.immich.app/
+- Under Account Settings > API Keys, create a new API Key
+- Assign the `asset.read`, `asset.download`, and `album.read` permissions and generate the key
+- Store your api key in the .env file with the key `IMMICH_KEY`
+    ```
+    IMMICH_KEY=your-key
     ```
