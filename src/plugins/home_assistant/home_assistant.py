@@ -45,36 +45,50 @@ class HomeAssistant(BasePlugin):
         if isinstance(attributes, str):
             attributes = [attributes]
 
-        # Fetch states for each entity
+        # Fetch states for each entity. Entities that no longer exist (HTTP 404, e.g. after a rename
+        # in Home Assistant) are skipped so the remaining ones are still shown. Any other error
+        # (auth, connection, server) still fails the refresh.
         items = []
-        try:
-            for eid in entities:
+        missing = []
+        for eid in entities:
+            try:
                 state_obj = self.get_entity_state(base_url, token, eid)
-                if not state_obj:
+            except requests.exceptions.HTTPError as e:
+                if e.response is not None and e.response.status_code == 404:
+                    logger.warning(f"Home Assistant entity not found, skipping: {eid}")
+                    missing.append(eid)
                     continue
-                attrs = state_obj.get("attributes", {})
-                # friendly name or entity id
-                name = attrs.get("friendly_name", eid)
-                state = state_obj.get("state")
-                unit = attrs.get("unit_of_measurement", "")
+                logger.error(f"Home Assistant request failed: {e}")
+                raise RuntimeError("Failed to fetch data from Home Assistant. Check baseUrl and token.")
+            except Exception as e:
+                logger.error(f"Home Assistant request failed: {e}")
+                raise RuntimeError("Failed to fetch data from Home Assistant. Check baseUrl and token.")
 
-                # Build attribute list according to user selection; if none selected, pick a few common ones
-                display_attrs = []
-                keys = attributes or [k for k in ("battery_level","humidity","temperature","pressure","power","voltage") if k in attrs]
-                for k in keys:
-                    if k in attrs:
-                        display_attrs.append({"key": k.replace("_", " ").title(), "value": attrs[k]})
+            if not state_obj:
+                continue
+            attrs = state_obj.get("attributes", {})
+            # friendly name or entity id
+            name = attrs.get("friendly_name", eid)
+            state = state_obj.get("state")
+            unit = attrs.get("unit_of_measurement", "")
 
-                items.append({
-                    "entity_id": eid,
-                    "name": name,
-                    "state": state,
-                    "unit": unit,
-                    "attributes": display_attrs
-                })
-        except Exception as e:
-            logger.error(f"Home Assistant request failed: {e}")
-            raise RuntimeError("Failed to fetch data from Home Assistant. Check baseUrl and token.")
+            # Build attribute list according to user selection; if none selected, pick a few common ones
+            display_attrs = []
+            keys = attributes or [k for k in ("battery_level","humidity","temperature","pressure","power","voltage") if k in attrs]
+            for k in keys:
+                if k in attrs:
+                    display_attrs.append({"key": k.replace("_", " ").title(), "value": attrs[k]})
+
+            items.append({
+                "entity_id": eid,
+                "name": name,
+                "state": state,
+                "unit": unit,
+                "attributes": display_attrs
+            })
+
+        if not items and missing:
+            raise RuntimeError(f"None of the configured Home Assistant entities were found: {', '.join(missing)}")
 
         # Build template params
         title = settings.get("title") or "Home Assistant"
