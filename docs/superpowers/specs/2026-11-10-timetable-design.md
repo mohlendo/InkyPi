@@ -8,7 +8,7 @@ data source is described correctly.
 Show the children's school timetables on the Inky Impression:
 
 - **mornings 06:00–07:45:** today's timetable, alternating with the weather view
-- **evenings 19:30–20:30:** tomorrow's timetable, exclusively. On Friday and Saturday evening there is none, so
+- **evenings 19:30–21:30:** tomorrow's timetable, exclusively. On Friday and Saturday evening there is none, so
   the view is skipped. On Sunday evening and on the last day of holidays the next day's timetable appears.
 
 Days on which none of the configured children has school are skipped, so the display shows its normal content
@@ -113,7 +113,7 @@ Pure functions, unit-tested without Home Assistant:
 - **"Schule Morgen", 06:00–07:45:**
   - `Stundenplan heute` (`day: today`)
   - a copy of the morning weather instance
-- **"Schule Abend", 19:30–20:30:** `Stundenplan Abend` (`day: tomorrow`)
+- **"Schule Abend", 19:30–21:30:** `Stundenplan Abend` (`day: tomorrow`)
 - Both windows are shorter than "Morgen" and "Abend" and therefore take priority.
 - Timetable instances refresh at every cycle (refresh interval ≤ cycle interval). Changes appear within 5
   minutes and the skip check runs every time. Unchanged images are not redrawn (existing image-hash check).
@@ -147,4 +147,4 @@ Pure functions, unit-tested without Home Assistant:
 So far the school only publishes the running week. If next week is not released by Sunday evening, before
 the script's last fetch, the evening view is skipped. It is not shown wrong. Check on the first weekend.
 If the school releases it later, the user can extend the script's fetch window until the end of the evening
-view (20:30).
+view (21:30).
