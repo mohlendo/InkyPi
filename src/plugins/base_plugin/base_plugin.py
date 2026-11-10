@@ -15,6 +15,12 @@ PLUGINS_DIR = resolve_path("plugins")
 BASE_PLUGIN_DIR =  os.path.join(PLUGINS_DIR, "base_plugin")
 BASE_PLUGIN_RENDER_DIR = os.path.join(BASE_PLUGIN_DIR, "render")
 
+
+class SkipRefresh(Exception):
+    """Raised by generate_image when a plugin has nothing to show right now (e.g. no school today).
+
+    Playlist refreshes then move on to other content instead of treating it as an error."""
+
 FRAME_STYLES = [
     {
         "name": "None",

@@ -89,20 +89,17 @@ class PlaylistManager:
                 return plugin
         return None
 
+    def determine_active_playlists(self, current_datetime):
+        """All playlists active at the given time, highest priority (shortest time window) first."""
+        current_time = current_datetime.strftime("%H:%M")  # Get current time in "HH:MM" format
+        active_playlists = [p for p in self.playlists if p.is_active(current_time)]
+        active_playlists.sort(key=lambda p: p.get_priority())
+        return active_playlists
+
     def determine_active_playlist(self, current_datetime):
         """Determine the active playlist based on the current time."""
-        current_time = current_datetime.strftime("%H:%M")  # Get current time in "HH:MM" format
-
-        # get active playlists that have plugins
-        active_playlists = [p for p in self.playlists if p.is_active(current_time)]
-        if not active_playlists:
-            return None
-
-        # Sort playlists by priority
-        active_playlists.sort(key=lambda p: p.get_priority())
-        playlist = active_playlists[0]
-
-        return playlist
+        active_playlists = self.determine_active_playlists(current_datetime)
+        return active_playlists[0] if active_playlists else None
 
     def get_playlist(self, playlist_name):
         """Returns the playlist with the specified name."""

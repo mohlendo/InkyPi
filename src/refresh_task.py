@@ -6,6 +6,7 @@ import psutil
 import pytz
 from datetime import datetime, timezone
 from plugins.plugin_registry import get_plugin_instance
+from plugins.base_plugin.base_plugin import SkipRefresh
 from utils.image_utils import compute_image_hash
 from model import RefreshInfo, PlaylistManager
 from PIL import Image
@@ -115,6 +116,7 @@ class RefreshTask:
                     current_dt = self._get_current_datetime()
 
                     refresh_action = None
+                    from_playlist = False
                     if self.manual_update_request:
                         # handle immediate update request
                         logger.info("Manual update requested")
@@ -134,14 +136,15 @@ class RefreshTask:
                         playlist, plugin_instance = self._determine_next_plugin(playlist_manager, latest_refresh, current_dt)
                         if plugin_instance:
                             refresh_action = PlaylistRefresh(playlist, plugin_instance)
+                            from_playlist = True
 
                     if refresh_action:
-                        plugin_config = self.device_config.get_plugin(refresh_action.get_plugin_id())
-                        if plugin_config is None:
-                            logger.error(f"Plugin config not found for '{refresh_action.get_plugin_id()}'.")
+                        if from_playlist:
+                            refresh_action, plugin, image = self._execute_playlist_refresh(refresh_action, playlist_manager, current_dt)
+                        else:
+                            plugin, image = self._execute(refresh_action, current_dt)
+                        if image is None:
                             continue
-                        plugin = get_plugin_instance(plugin_config)
-                        image = refresh_action.execute(plugin, self.device_config, current_dt)
                         image_hash = compute_image_hash(image)
 
                         refresh_info = refresh_action.get_refresh_info()
@@ -157,6 +160,9 @@ class RefreshTask:
                         self.device_config.refresh_info = RefreshInfo(**refresh_info)
                         self.device_config.write_config()
 
+            except SkipRefresh as e:
+                logger.info(f"Nothing to show: {e}")
+                self.refresh_result["exception"] = e
             except Exception as e:
                 logger.exception('Exception during refresh')
                 self.refresh_result["exception"] = e  # Capture exception
@@ -216,7 +222,44 @@ class RefreshTask:
         logger.info(f"Determined next plugin. | active_playlist: {playlist.name} | plugin_instance: {plugin.name}")
 
         return playlist, plugin
-    
+
+    def _execute(self, refresh_action, current_dt):
+        """Runs a refresh action. Returns (plugin, image), or (None, None) if the plugin is not configured."""
+        plugin_config = self.device_config.get_plugin(refresh_action.get_plugin_id())
+        if plugin_config is None:
+            logger.error(f"Plugin config not found for '{refresh_action.get_plugin_id()}'.")
+            return None, None
+        plugin = get_plugin_instance(plugin_config)
+        return plugin, refresh_action.execute(plugin, self.device_config, current_dt)
+
+    def _execute_playlist_refresh(self, refresh_action, playlist_manager, current_dt):
+        """Runs a playlist refresh. When the plugin has nothing to show (SkipRefresh), the other plugins of the
+        playlist are tried, then those of the other active playlists by priority.
+
+        Returns (refresh_action, plugin, image) of the refresh that produced an image; image is None if all skipped."""
+        for action in self._fallback_actions(refresh_action, playlist_manager, current_dt):
+            try:
+                plugin, image = self._execute(action, current_dt)
+            except SkipRefresh as e:
+                logger.info(f"Nothing to show, skipping. | plugin_instance: {action.plugin_instance.name} | reason: {e}")
+                continue
+            return action, plugin, image
+        logger.info("No plugin instance has anything to show, keeping the current image.")
+        return refresh_action, None, None
+
+    @staticmethod
+    def _fallback_actions(refresh_action, playlist_manager, current_dt):
+        """The given refresh, then the other plugins of its playlist, then those of the other active playlists."""
+        yield refresh_action
+        playlist = refresh_action.playlist
+        for _ in range(len(playlist.plugins) - 1):
+            yield PlaylistRefresh(playlist, playlist.get_next_plugin())
+        for other in playlist_manager.determine_active_playlists(current_dt):
+            if other is playlist:
+                continue
+            for _ in range(len(other.plugins)):
+                yield PlaylistRefresh(other, other.get_next_plugin())
+
     def log_system_stats(self):
         metrics = {
             'cpu_percent': psutil.cpu_percent(interval=1),
