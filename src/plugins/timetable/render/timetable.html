@@ -1,0 +1,39 @@
+{% extends "plugin.html" %}
+
+{% block content %}
+<div class="tt">
+  <header class="tt-header">
+    <div class="tt-title">{{ title }}</div>
+    <div class="tt-meta">{{ timestamp }}</div>
+  </header>
+
+  <main class="tt-columns">
+    {% for column in columns %}
+    <section class="tt-column">
+      <div class="tt-kid">
+        <span class="tt-tape">{{ column.name }}</span>
+        <span class="tt-span">{{ column.span }}</span>
+      </div>
+      {% if column.notice %}
+      <div class="tt-notice"><span class="tt-tag">{{ column.notice }}</span></div>
+      {% else %}
+      <div class="tt-rows">
+        {% for row in column.rows %}
+        <div class="tt-row{% if row.cancelled %} cancelled{% endif %}" style="flex-grow: {{ row.weight }}">
+          <div class="tt-time">{{ row.start }}<br>{{ row.end }}</div>
+          <div class="tt-body">
+            <div class="tt-line">
+              <span class="tt-subject">{{ row.subject }}</span>
+              {% if row.tag %}<span class="tt-tag">{{ row.tag }}</span>{% endif %}
+            </div>
+            {% if row.rooms %}<div class="tt-rooms">{{ row.rooms }}</div>{% endif %}
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+      {% endif %}
+    </section>
+    {% endfor %}
+  </main>
+</div>
+{% endblock %}

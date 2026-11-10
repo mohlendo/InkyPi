@@ -1,0 +1,87 @@
+/* Courier Prime (SIL Open Font License) is shipped with the Home Assistant plugin */
+@font-face { font-family: "Courier Prime"; font-weight: normal; src: url("../../home_assistant/render/fonts/CourierPrime-Regular.ttf") format("truetype"); }
+@font-face { font-family: "Courier Prime"; font-weight: bold; src: url("../../home_assistant/render/fonts/CourierPrime-Bold.ttf") format("truetype"); }
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+/* Pure Spectra 6 palette colors only; color is used for fills and markers, text stays black (see home_assistant.css) */
+:root { --black: #000000; --white: #ffffff; --yellow: #ffff00; --red: #ff0000; }
+
+.tt {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  font-family: "Courier Prime", "Courier New", monospace;
+  color: var(--black);
+  background: var(--white);
+}
+
+.tt-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding-bottom: 3px;
+  border-bottom: 4px solid var(--black);
+}
+.tt-title { font-weight: bold; font-size: 28px; line-height: 1; text-transform: uppercase; letter-spacing: 0.06em; }
+.tt-meta { font-weight: bold; font-size: 16px; }
+
+/* One column per child */
+.tt-columns { flex: 1; display: flex; min-height: 0; }
+.tt-column { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; padding: 6px 12px 0; }
+.tt-column + .tt-column { border-left: 2px solid var(--black); }
+.tt-column:first-child { padding-left: 0; }
+.tt-column:last-child { padding-right: 0; }
+
+.tt-kid { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
+.tt-tape {
+  padding: 2px 10px;
+  font-weight: bold;
+  font-size: 18px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  background: var(--yellow);
+}
+.tt-span { font-weight: bold; font-size: 18px; }
+
+/* Lesson blocks: height follows the duration (flex-grow set per row) */
+.tt-rows { flex: 1; display: flex; flex-direction: column; min-height: 0; }
+.tt-row {
+  flex: 1 1 0;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border-top: 2px solid var(--black);
+  container-type: size;
+}
+.tt-time { width: 64px; flex-shrink: 0; font-weight: bold; font-size: 17px; line-height: 1.15; }
+.tt-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.tt-line { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.tt-subject {
+  font-weight: bold;
+  font-size: clamp(15px, min(36cqh, 6.4cqw), 25px);
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.tt-rooms { font-weight: bold; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* Changes: black label with yellow text; cancelled lessons are struck through in red */
+.tt-tag {
+  flex-shrink: 0;
+  padding: 1px 6px;
+  font-weight: bold;
+  font-size: 14px;
+  letter-spacing: 0.1em;
+  white-space: nowrap;
+  background: var(--black);
+  color: var(--yellow);
+}
+.cancelled .tt-subject { text-decoration: line-through; text-decoration-color: var(--red); text-decoration-thickness: 4px; }
+.cancelled .tt-rooms { visibility: hidden; }
+
+.tt-notice { flex: 1; display: flex; align-items: center; justify-content: center; border-top: 2px solid var(--black); }
+.tt-notice .tt-tag { font-size: 18px; padding: 3px 10px; }

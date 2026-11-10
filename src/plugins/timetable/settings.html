@@ -1,0 +1,51 @@
+<div class="form-group">
+  <div class="form-group nowrap">
+    <label for="baseUrl" class="form-label">Home Assistant Base URL</label>
+    <input type="text" id="baseUrl" name="baseUrl" placeholder="http://homeassistant.local:8123" class="form-input">
+  </div>
+  <div class="form-group nowrap">
+    <label for="day" class="form-label">Day</label>
+    <select id="day" name="day" class="form-input">
+      <option value="today">Today</option>
+      <option value="next_school_day">Next school day (from tomorrow)</option>
+    </select>
+  </div>
+</div>
+
+<div class="form-group">
+  <label class="form-label">Children: name and WebUntis calendar entity</label>
+  <div id="childrenContainer" class="form-group"></div>
+  <button type="button" id="addChild" class="header-button">+ Add Child</button>
+</div>
+
+<script>
+  const childrenContainer = document.getElementById('childrenContainer');
+
+  function addChildRow(name = '', calendar = '') {
+    const row = document.createElement('div');
+    row.className = 'form-group nowrap';
+    row.innerHTML = `
+      <input type="text" name="childName[]" placeholder="Name" class="form-input">
+      <input type="text" name="childCalendar[]" placeholder="calendar.stundenplan_name" class="form-input">
+      <button type="button" class="delete-button" title="Remove">
+        <img src="{{ url_for('static', filename='icons/remove.png') }}" alt="remove" class="action-icon">
+      </button>
+    `;
+    row.querySelector('[name="childName[]"]').value = name;
+    row.querySelector('[name="childCalendar[]"]').value = calendar;
+    row.querySelector('.delete-button').onclick = () => row.remove();
+    childrenContainer.appendChild(row);
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    if (typeof loadPluginSettings !== 'undefined' && loadPluginSettings) {
+      document.getElementById('baseUrl').value = pluginSettings.baseUrl || '';
+      document.getElementById('day').value = pluginSettings.day || 'today';
+      const names = [].concat(pluginSettings['childName[]'] || []);
+      const calendars = [].concat(pluginSettings['childCalendar[]'] || []);
+      names.forEach((name, i) => addChildRow(name, calendars[i] || ''));
+    }
+    if (!childrenContainer.children.length) addChildRow();
+    document.getElementById('addChild').onclick = () => addChildRow();
+  });
+</script>
