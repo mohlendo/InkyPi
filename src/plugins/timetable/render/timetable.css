@@ -67,14 +67,14 @@
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.tt-rooms { font-weight: bold; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tt-rooms { font-weight: bold; font-size: 16px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
 /* Changes: black label with yellow text; cancelled lessons are struck through in red */
 .tt-tag {
   flex-shrink: 0;
-  padding: 1px 6px;
+  padding: 1px 7px;
   font-weight: bold;
-  font-size: 14px;
+  font-size: 16px;
   letter-spacing: 0.1em;
   white-space: nowrap;
   background: var(--black);
