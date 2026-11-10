@@ -1,24 +1,29 @@
 # School timetable on the Inky ("Stundenplan") – design
 
-Status: approved in chat on 2026-11-10, ready for an implementation plan.
+Status: approved in chat on 2026-11-10. Amended the same day: the evening view shows only tomorrow, and the
+data source is described correctly.
 
 ## Goal
 
 Show the children's school timetables on the Inky Impression:
 
 - **mornings 06:00–07:45:** today's timetable, alternating with the weather view
-- **evenings 19:30–20:30:** the timetable of the next school day, exclusively
+- **evenings 19:30–20:30:** tomorrow's timetable, exclusively. On Friday and Saturday evening there is none, so
+  the view is skipped. On Sunday evening and on the last day of holidays the next day's timetable appears.
 
 Days on which none of the configured children has school are skipped, so the display shows its normal content
 instead.
 
 ## Decisions
 
-- **Home Assistant is the data source.** The WebUntis community integration
-  ([JonasJoKuJonas/homeassistant-WebUntis](https://github.com/JonasJoKuJonas/homeassistant-WebUntis)) already
-  runs in Home Assistant and creates one calendar entity per child. InkyPi reads these calendars. It does not
-  talk to WebUntis itself. WebUntis credentials stay in Home Assistant only. The Home Assistant dashboard is out
-  of scope (it already exists).
+- **Home Assistant is the data source.** There is one calendar entity per child, from Home Assistant's "Remote
+  Calendar" integration (iCal). A separate timetable script on the user's server feeds these calendars:
+  - It fetches WebUntis every 30 minutes between 06:00 and 20:00, including the next week.
+  - After each fetch it triggers `homeassistant.update_entity` for the calendars. Remote Calendar's daily refresh
+    rhythm therefore does not matter.
+
+  InkyPi only reads these calendars. It neither talks to WebUntis nor triggers refreshes. The Home Assistant
+  dashboard is out of scope (it already exists).
 - **New plugin `timetable`**, separate from the `home_assistant` plugin. It reuses the Home Assistant base URL
   (a setting) and the `HOME_ASSISTANT_TOKEN` env key.
 - **Layout "A" (list)**, in the approved high-contrast style of the Home Assistant room view (see
@@ -35,7 +40,7 @@ instead.
 Home Assistant calendar REST API: a list of events with `summary`, `start.dateTime`, `end.dateTime`, `location`
 and `description`.
 
-The integration encodes the lesson state as a prefix in `summary`:
+The feed encodes the lesson state as a prefix in `summary`:
 
 | Prefix          | Meaning                        | Shown as                      |
 |-----------------|--------------------------------|-------------------------------|
@@ -51,14 +56,15 @@ Observed data:
 - Lessons are 45-minute periods. Double periods come as two consecutive events.
 - One child's calendar is a class timetable on purpose. Course groups therefore appear as several events with
   the same subject and time but different rooms.
-- The calendar currently contains only the running school week.
+- The calendar currently contains only the running school week: the school publishes the next week later.
+- Changes reach Home Assistant at most 30 minutes after they appear in WebUntis.
 
 ## Plugin settings (per instance)
 
 - `baseUrl`: Home Assistant URL
 - `children`: ordered list of `{name, calendar}` pairs, for example `Kind A` → `calendar.stundenplan_kind_a`.
   Names live only in the device config on the Pi, never in the repo.
-- `day`: `today` | `next_school_day`
+- `day`: `today` | `tomorrow`
 
 ## Processing
 
@@ -72,19 +78,16 @@ Pure functions, unit-tested without Home Assistant:
    within 5 minutes before the next starts, become one block.
 4. **Day span.** First start to last end, counting only lessons that are not cancelled. A child whose lessons
    are all cancelled shows the cancelled blocks and no span.
-5. **Target day.**
-   - `today`: the device-local date.
-   - `next_school_day`: the first date from tomorrow up to 4 days ahead on which at least one child has at least
-     one lesson. Cancelled lessons count, so a fully cancelled day is shown with its `ENTFALL` tags. Each child's
-     calendar is fetched once for the whole look-ahead window.
+5. **Target day.** Either `today` or `tomorrow` (device-local date). Each child's calendar is fetched once for
+   today and tomorrow. Cancelled lessons count as lessons, so a fully cancelled day is shown with its `ENTFALL`
+   tags.
 6. **Skip.** If no child has any lesson on the target day (cancelled ones included), the plugin raises
    `SkipRefresh`.
 
 ## Rendering
 
 - **Header:**
-  - left: `HEUTE · DI 10.11.` or `MORGEN · MI 11.11.` (another weekday name if the next school day is not
-    tomorrow, for example `MONTAG · 16.11.`)
+  - left: `HEUTE · DI 10.11.` or `MORGEN · MI 11.11.`
   - right: `Stand HH:MM`
 - **Per child column:** a yellow name tape and the day span (`8:00–13:10`), followed by rows. Double blocks get
   more height than single periods.
@@ -110,7 +113,7 @@ Pure functions, unit-tested without Home Assistant:
 - **"Schule Morgen", 06:00–07:45:**
   - `Stundenplan heute` (`day: today`)
   - a copy of the morning weather instance
-- **"Schule Abend", 19:30–20:30:** `Stundenplan nächster Schultag` (`day: next_school_day`)
+- **"Schule Abend", 19:30–20:30:** `Stundenplan Abend` (`day: tomorrow`)
 - Both windows are shorter than "Morgen" and "Abend" and therefore take priority.
 - Timetable instances refresh at every cycle (refresh interval ≤ cycle interval). Changes appear within 5
   minutes and the skip check runs every time. Unchanged images are not redrawn (existing image-hash check).
@@ -128,7 +131,7 @@ Pure functions, unit-tested without Home Assistant:
   - grouping of parallel courses
   - merging of double periods
   - day span with cancellations
-  - target-day selection, including weekends and look-ahead
+  - target-day selection, including Friday and Sunday evening
   - skip
 - **Render test:** `generate_image` with a fake Home Assistant response produces an 800×480 image. One column
   failing shows `KEINE DATEN`.
@@ -141,5 +144,7 @@ Pure functions, unit-tested without Home Assistant:
 
 ## Known risk
 
-The calendar holds only the running week. If Monday's lessons are not yet in the calendar on Sunday evening,
-the evening view is skipped. It is not shown wrong. Check on the first weekend.
+So far the school only publishes the running week. If next week is not released by Sunday evening, before
+the script's last fetch, the evening view is skipped. It is not shown wrong. Check on the first weekend.
+If the school releases it later, the user can extend the script's fetch window until the end of the evening
+view (20:30).

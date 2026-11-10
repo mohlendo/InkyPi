@@ -3,7 +3,6 @@
 Pure functions without I/O, so they can be tested without Home Assistant."""
 from datetime import datetime, timedelta
 
-LOOKAHEAD_DAYS = 4                 # next_school_day looks at most this many days ahead
 MERGE_GAP = timedelta(minutes=5)   # consecutive lessons closer than this form one block (double period)
 
 # Prefixes the WebUntis integration puts in front of the subject
@@ -11,7 +10,6 @@ STATE_PREFIXES = {"Cancelled: ": "cancelled", "Irregular: ": "irregular", "Room 
 TAGS = {"regular": None, "cancelled": "ENTFALL", "irregular": "VERTR.", "room_change": "RAUM"}
 
 WEEKDAYS = ["MO", "DI", "MI", "DO", "FR", "SA", "SO"]
-WEEKDAY_NAMES = ["MONTAG", "DIENSTAG", "MITTWOCH", "DONNERSTAG", "FREITAG", "SAMSTAG", "SONNTAG"]
 
 
 def parse_event(event, tz=None):
@@ -76,24 +74,16 @@ def lessons_on(lessons, day):
 
 
 def target_day(lesson_lists, today, mode):
-    """The day to show: today, or the next day (up to LOOKAHEAD_DAYS ahead) with at least one lesson of any child.
-    Cancelled lessons count. None if nobody has school."""
-    if mode == "today":
-        candidates = [today]
-    else:
-        candidates = [today + timedelta(days=offset) for offset in range(1, LOOKAHEAD_DAYS + 1)]
-    for day in candidates:
-        if any(lessons_on(lessons, day) for lessons in lesson_lists):
-            return day
+    """The day to show (today, or tomorrow for mode "tomorrow") if any child has at least one lesson then.
+    Cancelled lessons count. None if nobody has school, e.g. on Friday and Saturday evening."""
+    day = today if mode == "today" else today + timedelta(days=1)
+    if any(lessons_on(lessons, day) for lessons in lesson_lists):
+        return day
     return None
 
 
 def day_title(day, today):
-    if day == today:
-        return f"HEUTE · {WEEKDAYS[day.weekday()]} {day:%d.%m.}"
-    if day == today + timedelta(days=1):
-        return f"MORGEN · {WEEKDAYS[day.weekday()]} {day:%d.%m.}"
-    return f"{WEEKDAY_NAMES[day.weekday()]} · {day:%d.%m.}"
+    return f"{'HEUTE' if day == today else 'MORGEN'} · {WEEKDAYS[day.weekday()]} {day:%d.%m.}"
 
 
 def hm(dt):

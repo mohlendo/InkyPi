@@ -6,12 +6,12 @@ import pytz
 import requests
 
 from plugins.base_plugin.base_plugin import BasePlugin, SkipRefresh
-from plugins.timetable.lessons import LOOKAHEAD_DAYS, child_column, day_title, parse_event, target_day
+from plugins.timetable.lessons import child_column, day_title, parse_event, target_day
 
 logger = logging.getLogger(__name__)
 
 DEFAULT_TIMEOUT = 10
-DAY_MODES = ("today", "next_school_day")
+DAY_MODES = ("today", "tomorrow")
 FETCH_ERROR = "Failed to fetch the timetable calendars from Home Assistant. Check baseUrl and token."
 
 
@@ -58,9 +58,9 @@ class Timetable(BasePlugin):
         now = self.current_time(tz)
         today = now.date()
         start = tz.localize(datetime.combine(today, datetime.min.time()))
-        end = start + timedelta(days=LOOKAHEAD_DAYS + 1)
+        end = start + timedelta(days=2)
 
-        # One request per child for the whole look-ahead window; a failing calendar only empties its column
+        # One request per child for today and tomorrow; a failing calendar only empties its column
         lessons = []
         for name, calendar in children:
             try:
@@ -74,7 +74,7 @@ class Timetable(BasePlugin):
 
         day = target_day([child_lessons for child_lessons in lessons if child_lessons is not None], today, mode)
         if day is None:
-            raise SkipRefresh("no school today" if mode == "today" else f"no school in the next {LOOKAHEAD_DAYS} days")
+            raise SkipRefresh(f"no school {mode}")
 
         template_params = {
             "title": day_title(day, today),

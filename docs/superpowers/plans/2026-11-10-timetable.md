@@ -17,6 +17,12 @@ and the evening, and skip the view on days without school.
 
 **Spec:** `docs/superpowers/specs/2026-11-10-timetable-design.md`
 
+> **Amendment (2026-11-10, after Task 4):**
+> - The day mode `next_school_day` (4-day look-ahead) was replaced by `tomorrow` (Friday and Saturday evening
+>   are skipped). `LOOKAHEAD_DAYS` and the weekday-name title are gone. The plugin fetches today and tomorrow
+>   only.
+> - The code blocks below show the original version. The committed code and tests are authoritative.
+
 ## Global Constraints
 
 - Run tests with `PYTHONPATH=src /tmp/inkypi-trial-venv/bin/python -m pytest` (repo root). New tests import

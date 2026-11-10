@@ -77,17 +77,17 @@ def test_target_day_today():
     assert target_day([[], []], WED, "today") is None
 
 
-def test_next_school_day_skips_the_weekend_and_counts_cancelled_lessons():
-    friday, monday = date(2026, 11, 13), date(2026, 11, 16)
+def test_tomorrow_only_looks_at_the_next_day_and_counts_cancelled_lessons():
+    friday, sunday, monday = date(2026, 11, 13), date(2026, 11, 15), date(2026, 11, 16)
     kid = lessons(event("08:00", "08:45", "Cancelled: Mathe", day="2026-11-16"))
-    assert target_day([kid], friday, "next_school_day") == monday
-    assert target_day([kid], monday, "next_school_day") is None   # nothing in the following 4 days
+    assert target_day([kid], sunday, "tomorrow") == monday
+    assert target_day([kid], friday, "tomorrow") is None   # Saturday: no school, the evening view is skipped
 
 
 def test_day_title():
     assert day_title(date(2026, 11, 10), date(2026, 11, 10)) == "HEUTE · DI 10.11."
     assert day_title(date(2026, 11, 11), date(2026, 11, 10)) == "MORGEN · MI 11.11."
-    assert day_title(date(2026, 11, 16), date(2026, 11, 13)) == "MONTAG · 16.11."
+    assert day_title(date(2026, 11, 16), date(2026, 11, 15)) == "MORGEN · MO 16.11."
 
 
 def test_child_column_rows_and_span():

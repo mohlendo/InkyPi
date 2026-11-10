@@ -8,7 +8,7 @@ from plugins.base_plugin.base_plugin import SkipRefresh
 from plugins.timetable.timetable import Timetable
 
 TZ = pytz.timezone("Europe/Berlin")
-SETTINGS = {"baseUrl": "http://ha.local:8123/", "day": "next_school_day",
+SETTINGS = {"baseUrl": "http://ha.local:8123/", "day": "tomorrow",
             "childName[]": ["Kind A", "Kind B"],
             "childCalendar[]": ["calendar.stundenplan_kind_a", "calendar.stundenplan_kind_b"]}
 
@@ -59,7 +59,7 @@ def serve(calendars):
     return fetch_events
 
 
-def test_renders_the_next_school_day_for_all_children(plugin, monkeypatch):
+def test_renders_tomorrow_for_all_children(plugin, monkeypatch):
     monkeypatch.setattr(plugin, "fetch_events", serve(CALENDARS))
     assert plugin.generate_image(SETTINGS, FakeDeviceConfig()) == "image"
     dimensions, html_file, css_file, params = plugin.rendered
@@ -69,6 +69,18 @@ def test_renders_the_next_school_day_for_all_children(plugin, monkeypatch):
     kid_a, kid_b = params["columns"]
     assert (kid_a["name"], kid_a["span"], [r["subject"] for r in kid_a["rows"]]) == ("Kind A", "8:00–9:30", ["Musik"])
     assert (kid_b["span"], kid_b["rows"][0]["tag"]) == ("", "ENTFALL")
+
+
+def test_fetches_today_and_tomorrow(plugin, monkeypatch):
+    windows = []
+
+    def fetch_events(base_url, token, calendar, start, end):
+        windows.append((start.isoformat(), end.isoformat()))
+        return CALENDARS[calendar]
+
+    monkeypatch.setattr(plugin, "fetch_events", fetch_events)
+    plugin.generate_image(SETTINGS, FakeDeviceConfig())
+    assert windows == [("2026-11-10T00:00:00+01:00", "2026-11-12T00:00:00+01:00")] * 2
 
 
 def test_failing_calendar_only_affects_its_column(plugin, monkeypatch):
